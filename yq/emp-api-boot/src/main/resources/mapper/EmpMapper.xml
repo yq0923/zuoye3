@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 为这个mapper指定一个唯一的namespace，namespace的值习惯上设置成包名+sql映射文件名，这样就能够保证namespace的值是唯一的
+	例如namespace="com.szh.mapper.personMapper"就是com.szh.mapper(包名)+personMapper(personMapper.xml文件去除后缀) -->
+<mapper namespace="com.fh.mapper.EmpMapper">
+
+    <sql id="tableName">
+        emp_api_boot
+    </sql>
+
+    <sql id="whereSql">
+        <where>
+            <if test="name != null and name != ''">
+                and te1.name like concat('%',#{name},'%')
+            </if>
+            <if test="entryYear != null and entryYear != -1">
+                <if test="entryYear == 1">
+                    <![CDATA[
+                      and TIMESTAMPDIFF(YEAR,te1.entryTime,sysdate()) < 1
+                    ]]>
+                </if>
+                <if test="entryYear == 2">
+                    <![CDATA[
+                      and TIMESTAMPDIFF(YEAR,te1.entryTime,sysdate()) >= 3
+                    ]]>
+                </if>
+                <if test="entryYear == 3">
+                    <![CDATA[
+                      and TIMESTAMPDIFF(YEAR,te1.entryTime,sysdate()) >= 5
+                    ]]>
+                </if>
+                <if test="entryYear == 4">
+                    <![CDATA[
+                      and TIMESTAMPDIFF(YEAR,te1.entryTime,sysdate()) >= 10
+                    ]]>
+                </if>
+            </if>
+            <if test="isLeader != null">
+                <if test="isLeader == 1">
+                    and te3.isLeader = 1
+                </if>
+                <if test="isLeader == 2">
+                    and te3.isLeader = 0
+                </if>
+            </if>
+            <if test="jobId != null and jobId != -1">
+                and te1.jobId = #{jobId}
+            </if>
+            <if test="deptId != null and deptId != -1">
+                and te1.deptId = #{deptId}
+            </if>
+        </where>
+    </sql>
+
+    <select id="queryEmpCount" parameterType="EmpQuery" resultType="long">
+        select count(*) from <include refid="tableName"/>
+    </select>
+
+    <select id="queryEmpList" resultType="Emp" parameterType="EmpQuery">
+        select te1.*,te2.name as leaderName,tj.name as jobName,td.name as deptName
+        from emp_api_boot te1 left join emp_api_boot te2
+        on te1.leaderId = te2.id
+        left join emp_job tj on te1.jobId = tj.id
+        left join emp_dept td on te1.deptId = td.id
+        left join (
+        SELECT distinct te1.*,
+        case when te2.id is null then 0 else 1 end isLeader
+        FROM emp_api_boot te1 left join emp_api_boot te2
+        on te1.id = te2.leaderId
+        ) te3 on te1.id = te3.id
+        <include refid="whereSql"/>
+    </select>
+
+
+    <insert id="addEmp" parameterType="Emp">
+        INSERT INTO <include refid="tableName"/> (name, price, typeId,
+        publisherId, isHot, time)
+        VALUES (
+        #{name}, #{price}, #{typeId},
+        #{publisherId}, #{isHot}, #{time}
+        );
+    </insert>
+
+    <select id="getEmpById" parameterType="int" resultType="Emp">
+        select * from <include refid="tableName"/>
+        where id = #{id}
+    </select>
+
+    <update id="updateEmp" parameterType="Emp">
+        update <include refid="tableName"/> set
+        name=#{name}, price=#{price}, time=#{time},
+        typeId=#{typeId}, isHot=#{isHot}, publisherId=#{publisherId}
+        where id = #{id}
+    </update>
+
+    <delete id="deleteEmp" parameterType="int">
+        delete from <include refid="tableName"/> where id = #{id}
+    </delete>
+
+    <delete id="batchDeleteEmp" parameterType="List">
+        delete from <include refid="tableName"/> where id in
+        <foreach collection="list" item="id" open="(" close=")" separator=",">
+            #{id}
+        </foreach>
+    </delete>
+
+    <select id="queryDeptList" resultType="Dept">
+        select * from emp_dept
+    </select>
+
+    <select id="queryJobList" resultType="Job">
+        select * from emp_job
+    </select>
+
+</mapper>
